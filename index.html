@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Shape Drawer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #e0f7fa;
+        color: #007bff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      h2 {
+        color: #0056b3;
+        margin: 10px 0;
+      }
+
+      form {
+        display: inline-block;
+        padding: 10px;
+        background-color: #b3e5fc;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      label {
+        display: block;
+        color: #004d79;
+      }
+
+      #canvas2D {
+        border: 2px solid #007bff;
+        border-radius: 10px;
+        margin-top: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Choose your favorite shape:</h2>
+    <form class="form" id="shapeForm">
+      <label><input type="radio" name="shape" value="square" /> Square</label><br />
+      <label><input type="radio" name="shape" value="triangle" /> Triangle</label><br />
+      <label><input type="radio" name="shape" value="rectangle" /> Rectangle</label><br />
+      <label><input type="radio" name="shape" value="circle" /> Circle</label><br />
+    </form>
+
+    <h2>Choose your favorite color:</h2>
+    <form id="colorForm">
+      <label><input type="radio" name="color" value="blue" /> Blue</label><br />
+      <label><input type="radio" name="color" value="red" /> Red</label><br />
+      <label><input type="radio" name="color" value="green" /> Green</label><br />
+    </form>
+
+    <canvas id="canvas2D" width="400" height="400"></canvas>
+
+    <script>
+      const canvas2D = document.getElementById("canvas2D");
+      const ctx2D = canvas2D.getContext("2d");
+
+      let shapeSize = 100;
+      let isWavy = false;
+      let controlPoints = [
+        { x: 100, y: 100 }, // Top-left
+        { x: 200, y: 100 }, // Top-right
+        { x: 200, y: 200 }, // Bottom-right
+        { x: 100, y: 200 }, // Bottom-left
+      ];
+      let draggingPoint = null;
+
+      const drawShape = () => {
+        const selectedShape = document.querySelector('input[name="shape"]:checked');
+        const selectedColor = document.querySelector('input[name="color"]:checked');
+
+        if (!selectedShape || !selectedColor) return;
+
+        const shape = selectedShape.value;
+        const color = selectedColor.value;
+
+        ctx2D.clearRect(0, 0, canvas2D.width, canvas2D.height);
+        ctx2D.fillStyle = color;
+
+        ctx2D.beginPath();
+        if (shape === "square" || shape === "rectangle") {
+          ctx2D.moveTo(controlPoints[0].x, controlPoints[0].y);
+          if (isWavy) {
+            ctx2D.quadraticCurveTo(
+              (controlPoints[0].x + controlPoints[1].x) / 2,
+              controlPoints[0].y - 20,
+              controlPoints[1].x,
+              controlPoints[1].y
+            );
+            ctx2D.quadraticCurveTo(
+              controlPoints[1].x + 20,
+              (controlPoints[1].y + controlPoints[2].y) / 2,
+              controlPoints[2].x,
+              controlPoints[2].y
+            );
+            ctx2D.quadraticCurveTo(
+              (controlPoints[2].x + controlPoints[3].x) / 2,
+              controlPoints[2].y + 20,
+              controlPoints[3].x,
+              controlPoints[3].y
+            );
+            ctx2D.quadraticCurveTo(
+              controlPoints[3].x - 20,
+              (controlPoints[3].y + controlPoints[0].y) / 2,
+              controlPoints[0].x,
+              controlPoints[0].y
+            );
+          } else {
+            ctx2D.lineTo(controlPoints[1].x, controlPoints[1].y);
+            ctx2D.lineTo(controlPoints[2].x, controlPoints[2].y);
+            ctx2D.lineTo(controlPoints[3].x, controlPoints[3].y);
+            ctx2D.closePath();
+          }
+        } else if (shape === "triangle") {
+          ctx2D.moveTo(controlPoints[0].x, controlPoints[0].y);
+          ctx2D.lineTo(controlPoints[1].x, controlPoints[1].y);
+          ctx2D.lineTo(controlPoints[2].x, controlPoints[2].y);
+          ctx2D.closePath();
+        } else if (shape === "circle") {
+          const radius = Math.sqrt(
+            Math.pow(controlPoints[0].x - controlPoints[2].x, 2) +
+            Math.pow(controlPoints[0].y - controlPoints[2].y, 2)
+          ) / 2;
+          ctx2D.arc(
+            (controlPoints[0].x + controlPoints[2].x) / 2,
+            (controlPoints[0].y + controlPoints[2].y) / 2,
+            radius,
+            0,
+            Math.PI * 2
+          );
+        }
+        ctx2D.fill();
+
+        // Draw control points for dragging
+        ctx2D.fillStyle = "#000";
+        controlPoints.forEach(point => {
+          ctx2D.beginPath();
+          ctx2D.arc(point.x, point.y, 5, 0, Math.PI * 2); // Draw control point
+          ctx2D.fill();
+        });
+      };
+
+      const isPointInControl = (x, y) => {
+        return controlPoints.find(point => {
+          return Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2) < 5;
+        });
+      };
+
+      canvas2D.addEventListener("mousedown", (event) => {
+        const rect = canvas2D.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        draggingPoint = isPointInControl(x, y);
+      });
+
+      canvas2D.addEventListener("mousemove", (event) => {
+        if (!draggingPoint) return;
+
+        const rect = canvas2D.getBoundingClientRect();
+        draggingPoint.x = event.clientX - rect.left;
+        draggingPoint.y = event.clientY - rect.top;
+
+        drawShape();
+      });
+
+      canvas2D.addEventListener("mouseup", () => {
+        draggingPoint = null;
+      });
+
+      canvas2D.addEventListener("click", (event) => {
+        const rect = canvas2D.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        if (x >= controlPoints[0].x && x <= controlPoints[2].x &&
+            y >= controlPoints[0].y && y <= controlPoints[2].y) {
+          isWavy = !isWavy; // Toggle wavy effect
+          drawShape();
+        }
+      });
+
+      document.querySelectorAll('input[name="shape"], input[name="color"]').forEach(input => {
+        input.addEventListener("change", () => {
+          // Reset control points and redraw the shape on shape/color change
+          controlPoints = [
+            { x: 100, y: 100 },
+            { x: 200, y: 100 },
+            { x: 200, y: 200 },
+            { x: 100, y: 200 },
+          ];
+          drawShape();
+        });
+      });
+
+      drawShape(); // Initial draw
+    </script>
+  </body>
+</html>
